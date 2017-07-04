@@ -214,7 +214,7 @@ int main(int argc, char* argv[])
             // fork the process to launch mplayer
             if ((child = fork()) == 0)
             {
-                execlp("xterm", "xterm", "-e", "ffplay", fifo_name, NULL);
+                execlp("xterm", "xterm", "-e", "ffplay" ,"-cpuflags","sse4.2","-framedrop","-maxrate","512KB","-minrate","256KB","-bufsize","1024KB","-b:v","300KB", fifo_name, NULL);
                 ARSAL_PRINT(ARSAL_PRINT_ERROR, TAG, "Missing mplayer, you will not see the video. Please install mplayer and xterm.");
                 return -1;
             }
