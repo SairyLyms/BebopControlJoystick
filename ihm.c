@@ -201,6 +201,7 @@ extern input_t joyinput;
                   if(ihm->onInputEventCallback != NULL)
                   {
                       ihm->onInputEventCallback (IHM_INPUT_EVENT_UP, ihm->customData);
+
                   }
               }
               else if(joyinput.down)
@@ -280,7 +281,7 @@ extern input_t joyinput;
                       ihm->onInputEventCallback (IHM_INPUT_EVENT_CAMERA_SHOT, ihm->customData);
                   }
               }
-              else if(joyinput.viewdir)
+              else if(joyinput.pan || joyinput.tilt)
               {
                   if(ihm->onInputEventCallback != NULL)
                   {

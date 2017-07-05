@@ -87,11 +87,6 @@
  *             implementation :
  *
  *****************************************/
- /* H.264 bitstreams */
-const uint8_t sps[] = { 0x00, 0x00, 0x00, 0x01, 0x67, 0x42, 0x00, 0x0a, 0xf8, 0x41, 0xa2 };
-const uint8_t pps[] = { 0x00, 0x00, 0x00, 0x01, 0x68, 0xce, 0x38, 0x80 };
-const uint8_t slice_header[] = { 0x00, 0x00, 0x00, 0x01, 0x05, 0x88, 0x84, 0x21, 0xa0 };
-
 input_t joyinput;
 
 static char fifo_dir[] = FIFO_DIR_PATTERN;
@@ -129,17 +124,13 @@ void InitJoystickValue(void)
     joyinput.takeoff = 0;
     joyinput.up = 0;
     joyinput.down = 0;
+    joyinput.pan = 0;
+    joyinput.tilt = 0;
 }
 
 static void signal_handler(int signal)
 {
     gIHMRun = 0;
-}
-
-void *thread_func(void *data)
-{
-  execlp("mplayer", "-demuxer", "h264es", fifo_name, "-benchmark", "-really-quiet", NULL);
-  return NULL;
 }
 
 int main(int argc, char* argv[])
@@ -214,16 +205,11 @@ int main(int argc, char* argv[])
             // fork the process to launch mplayer
             if ((child = fork()) == 0)
             {
-                execlp("xterm", "xterm", "-e", "ffplay" ,"-cpuflags","sse4.2","-framedrop","-maxrate","512KB","-minrate","256KB","-bufsize","1024KB","-b:v","300KB", fifo_name, NULL);
+                execlp("xterm", "xterm", "-e", "mplayer", "-demuxer", "h264es", fifo_name,"-benchmark", "-really-quiet", NULL);
+                //execlp("xterm", "xterm", "-e", "ffplay" ,"-cpuflags","sse4.2","-framedrop","-maxrate","512KB","-minrate","256KB","-bufsize","1024KB","-b:v","300KB", fifo_name, NULL);
                 ARSAL_PRINT(ARSAL_PRINT_ERROR, TAG, "Missing mplayer, you will not see the video. Please install mplayer and xterm.");
                 return -1;
             }
-          #if 0
-          if(ARSAL_Thread_Create(&tid, thread_func, NULL) < 0)
-          {
-            failed = 1;
-          }
-          #endif
         }
 
         if (DISPLAY_WITH_MPLAYER)
@@ -380,6 +366,7 @@ int main(int argc, char* argv[])
     if (!failed)
     {
         ARSAL_PRINT(ARSAL_PRINT_INFO, TAG, "- send StreamingVideoEnable ... ");
+        error = deviceController->aRDrone3->sendPictureSettingsVideoFramerate(deviceController->aRDrone3, 2);
         error = deviceController->aRDrone3->sendPictureSettingsVideoResolutions(deviceController->aRDrone3, 0);
         error = deviceController->aRDrone3->sendMediaStreamingVideoEnable (deviceController->aRDrone3, 1);
         error = deviceController->aRDrone3->sendPictureSettingsPictureFormatSelection(deviceController->aRDrone3, 1);
@@ -422,36 +409,52 @@ int joy_idx = 0;
                 something_new = 1;
                 switch(event.type)
                 {
-                  case SDL_JOYAXISMOTION:
-                    switch(event.jaxis.axis){
-                      case 0 : joyinput.roll = abslim(0.1*(event.jaxis.value >> 5),100);break;
-                      case 1 : joyinput.pitch = -abslim(0.1*(event.jaxis.value >> 5),100);break;
-                      case 2 : joyinput.yaw = abslim(0.1*(event.jaxis.value >> 5),100);break;
-                      case 3 : joyinput.slide = -(abslim(0.1*(event.jaxis.value >> 5),100)-100) >> 1;break;
-                      default : break;
-                    }break;
-
                   case SDL_JOYBUTTONDOWN:
                   case SDL_JOYBUTTONUP:
                     switch(event.jbutton.button){
-                      case 0 : joyinput.shot =  event.jbutton.state;break;
-                      case 1 : joyinput.trig = event.jbutton.state;break;
+                      case 0 : joyinput.trig =  event.jbutton.state;break;
+                      case 1 : joyinput.shot = event.jbutton.state;break;
                       case 2 : joyinput.landing = event.jbutton.state;break;
                       case 3 : joyinput.takeoff = event.jbutton.state;break;
-                      case 6 : joyinput.up =  event.jbutton.state;break;
-                      case 7 : joyinput.down =  event.jbutton.state;break;
+                      //case 6 : joyinput.up =  event.jbutton.state;break;
+                      //case 7 : joyinput.down =  event.jbutton.state;break;
                       default : break;
                     }break;
-
-                  case SDL_JOYHATMOTION:
-                    joyinput.viewdir = event.jhat.value;
+                        
+                    case SDL_JOYHATMOTION:
+                        switch(event.jhat.value){
+                            case 1 : joyinput.up = 1;break;
+                            case 4 : joyinput.down = 1;break;
+                            default : joyinput.up = 0;joyinput.down = 0;break;
+                    }break;
+                
+                    case SDL_JOYAXISMOTION:
+                        switch(event.jaxis.axis){
+                            case 0 : if(joyinput.trig){
+                                            joyinput.roll = abslim(0.1*(event.jaxis.value >> 5),100);
+                                            joyinput.pan = 0;
+                                        }
+                                     else{
+                                            joyinput.roll = 0;
+                                            joyinput.pan = abslim(0.1*(event.jaxis.value >> 6),50);
+                                        }break;
+                            case 1 : if(joyinput.trig){
+                                            joyinput.pitch = -abslim(0.1*(event.jaxis.value >> 5),100);
+                                            joyinput.tilt = 0;
+                                        }
+                                     else{
+                                            joyinput.pitch = 0;
+                                            joyinput.tilt = abslim(0.1*(event.jaxis.value >> 7),25);
+                                        }break;
+                            case 2 : joyinput.yaw = abslim(0.1*(event.jaxis.value >> 5),100);break;
+                            case 3 : joyinput.slide = -(abslim(0.1*(event.jaxis.value >> 5),100)-100) >> 1;break;
+                            default : break;
+                    }break;
+                        case SDL_QUIT:
+                        printf("Recieved interrupt, exiting\n");
                     break;
 
-                  case SDL_QUIT:
-                    printf("Recieved interrupt, exiting\n");
-                    break;
-
-                  default:break;
+                   default:break;
                 }
               }
             usleep(10000);
@@ -649,11 +652,8 @@ eARCONTROLLER_ERROR decoderConfigCallback (ARCONTROLLER_Stream_Codec_t codec, vo
         {
             if (DISPLAY_WITH_MPLAYER)
             {
-                //fwrite(codec.parameters.h264parameters.spsBuffer, codec.parameters.h264parameters.spsSize, 1, videoOut);
-                //fwrite(codec.parameters.h264parameters.ppsBuffer, codec.parameters.h264parameters.ppsSize, 1, videoOut);
-                fwrite(sps, 1, sizeof(sps), videoOut);
-                fwrite(pps, 1, sizeof(pps), videoOut);
-
+                fwrite(codec.parameters.h264parameters.spsBuffer, codec.parameters.h264parameters.spsSize, 1, videoOut);
+                fwrite(codec.parameters.h264parameters.ppsBuffer, codec.parameters.h264parameters.ppsSize, 1, videoOut);
                 fflush (videoOut);
             }
         }
@@ -677,7 +677,6 @@ eARCONTROLLER_ERROR didReceiveFrameCallback (ARCONTROLLER_Frame_t *frame, void *
             if (DISPLAY_WITH_MPLAYER)
             {
                 fwrite(frame->data, frame->used, 1, videoOut);
-
                 fflush (videoOut);
             }
         }
@@ -758,6 +757,7 @@ void onInputEvent (eIHM_INPUT_EVENT event, void *customData)
     case IHM_INPUT_EVENT_FORWARD:
         if(deviceController != NULL)
         {
+            error = deviceController->aRDrone3->sendCameraOrientation(deviceController->aRDrone3, 0, 0);
             error = deviceController->aRDrone3->setPilotingPCMDPitch(deviceController->aRDrone3, joyinput.pitch);
             error = deviceController->aRDrone3->setPilotingPCMDFlag(deviceController->aRDrone3, joyinput.trig);
         }
@@ -765,6 +765,7 @@ void onInputEvent (eIHM_INPUT_EVENT event, void *customData)
     case IHM_INPUT_EVENT_BACK:
         if(deviceController != NULL)
         {
+            error = deviceController->aRDrone3->sendCameraOrientation(deviceController->aRDrone3, 0, 0);
             error = deviceController->aRDrone3->setPilotingPCMDPitch(deviceController->aRDrone3, joyinput.pitch);
             error = deviceController->aRDrone3->setPilotingPCMDFlag(deviceController->aRDrone3, joyinput.trig);
         }
@@ -772,6 +773,7 @@ void onInputEvent (eIHM_INPUT_EVENT event, void *customData)
     case IHM_INPUT_EVENT_ROLL_LEFT:
         if(deviceController != NULL)
         {
+            error = deviceController->aRDrone3->sendCameraOrientation(deviceController->aRDrone3, 0, 0);
             error = deviceController->aRDrone3->setPilotingPCMDRoll(deviceController->aRDrone3, joyinput.roll);
             error = deviceController->aRDrone3->setPilotingPCMDFlag(deviceController->aRDrone3, joyinput.trig);
         }
@@ -779,6 +781,7 @@ void onInputEvent (eIHM_INPUT_EVENT event, void *customData)
     case IHM_INPUT_EVENT_ROLL_RIGHT:
         if(deviceController != NULL)
         {
+            error = deviceController->aRDrone3->sendCameraOrientation(deviceController->aRDrone3, 0, 0);
             error = deviceController->aRDrone3->setPilotingPCMDRoll(deviceController->aRDrone3, joyinput.roll);
             error = deviceController->aRDrone3->setPilotingPCMDFlag(deviceController->aRDrone3, joyinput.trig);
         }
@@ -793,16 +796,7 @@ void onInputEvent (eIHM_INPUT_EVENT event, void *customData)
     case IHM_INPUT_EVENT_CAMERA_DIR:
         if(deviceController != NULL)
         {
-            float tilt,pan;
-            if(joyinput.viewdir && 0x1){tilt = 1;}
-            else if(joyinput.viewdir && 0x4){tilt = -1;}
-            else{tilt = 0;}
-            if(joyinput.viewdir && 0x2){pan = 1;}
-            else if(joyinput.viewdir && 0x8){pan = -1;}
-            else{pan = 0;}
-            tilt = 0.8 * tilt * (float)joyinput.slide;
-            pan = 0.8 * pan * (float)joyinput.slide;
-            error = deviceController->aRDrone3->sendCameraOrientationV2(deviceController->aRDrone3, tilt, pan);
+            error = deviceController->aRDrone3->sendCameraOrientation(deviceController->aRDrone3, joyinput.tilt, joyinput.pan);
         }
         break;
     case IHM_INPUT_EVENT_NONE:

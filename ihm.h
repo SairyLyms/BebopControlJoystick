@@ -67,6 +67,7 @@ typedef struct
 
 typedef struct {
     int pitch,roll,yaw,slide,takeoff,landing,up,down,trig,shot,viewdir;
+    int8_t pan,tilt;
 }input_t;
 
 IHM_t *IHM_New (IHM_onInputEvent_t onInputEventCallback);
