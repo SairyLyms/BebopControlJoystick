@@ -78,6 +78,6 @@ void IHM_setCustomData(IHM_t *ihm, void *customData);
 void IHM_PrintHeader(IHM_t *ihm, char *headerStr);
 void IHM_PrintInfo(IHM_t *ihm, char *infoStr);
 void IHM_PrintBattery(IHM_t *ihm, uint8_t percent);
-
+void IHM_PrintJoyinfo(IHM_t *ihm);
 
 #endif /* _BEBOP_SAMPLE_IHM_H_ */

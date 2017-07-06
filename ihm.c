@@ -66,6 +66,10 @@
 
 #define BATTERY_X 0
 #define BATTERY_Y 4
+
+#define JOYVALUE_X 0
+#define JOYVALUE_Y 6
+
 #undef main
 /*****************************************
  *
@@ -120,10 +124,7 @@ extern input_t joyinput;
       if (!failed)
       {
           raw();                  // Line buffering disabled
-          keypad(stdscr, TRUE);
           noecho();               // Don't echo() while we do getch
-          timeout(100);
-
           refresh();
       }
 
@@ -319,6 +320,7 @@ extern input_t joyinput;
           move(INFO_Y, 0);    // move to begining of line
           clrtoeol();         // clear line
           mvprintw(INFO_Y, INFO_X, infoStr);
+          refresh();
       }
   }
 
@@ -329,5 +331,18 @@ extern input_t joyinput;
           move(BATTERY_Y, 0);     // move to begining of line
           clrtoeol();             // clear line
           mvprintw(BATTERY_Y, BATTERY_X, "Battery: %d", percent);
+          refresh();
       }
   }
+
+
+  void IHM_PrintJoyinfo(IHM_t *ihm)
+    {
+        if (ihm != NULL)
+        {
+            move(JOYVALUE_Y, 0);     // move to begining of line
+            clrtoeol();             // clear line
+            mvprintw(JOYVALUE_Y, JOYVALUE_X, "Pitch: %d,Roll: %d,Yaw: %d,UP: %d,DOWN: %d", joyinput.pitch,joyinput.roll,joyinput.yaw,joyinput.up,joyinput.down);
+            refresh();
+        }
+    }

@@ -42,6 +42,8 @@ void commandReceived (eARCONTROLLER_DICTIONARY_KEY commandKey, ARCONTROLLER_DICT
 
 // IHM updates from commands
 void batteryStateChanged (uint8_t percent);
+void JoystickStateChanged (void);
+
 
 // called when a streaming frame has been received
 eARCONTROLLER_ERROR didReceiveFrameCallback (ARCONTROLLER_Frame_t *frame, void *customData);

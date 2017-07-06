@@ -111,6 +111,8 @@ int abslim(int in,int lim)
     return value;
 }
 
+
+
 void InitJoystickValue(void)
 {
     joyinput.roll = 0;
@@ -206,7 +208,7 @@ int main(int argc, char* argv[])
             if ((child = fork()) == 0)
             {
                 execlp("xterm", "xterm", "-e", "mplayer", "-demuxer", "h264es", fifo_name,"-benchmark", "-really-quiet", NULL);
-                //execlp("xterm", "xterm", "-e", "ffplay" ,"-cpuflags","sse4.2","-framedrop","-maxrate","512KB","-minrate","256KB","-bufsize","1024KB","-b:v","300KB", fifo_name, NULL);
+                //execlp("xterm", "xterm", "-e", "mplayer" ,"-cpuflags","sse4.2","-framedrop","-maxrate","512KB","-minrate","256KB","-bufsize","1024KB","-b:v","300KB", fifo_name, NULL);
                 ARSAL_PRINT(ARSAL_PRINT_ERROR, TAG, "Missing mplayer, you will not see the video. Please install mplayer and xterm.");
                 return -1;
             }
@@ -379,7 +381,7 @@ int main(int argc, char* argv[])
 
     if (!failed)
     {
-        IHM_PrintInfo(ihm, "Running ... ('t' to takeoff ; Spacebar to land ; 'e' for emergency ; Arrow keys and ('r','f','d','g') to move ; 'q' to quit)");
+        IHM_PrintInfo(ihm, "Running ...");
 
 #ifdef IHM
 
@@ -420,14 +422,14 @@ int joy_idx = 0;
                       //case 7 : joyinput.down =  event.jbutton.state;break;
                       default : break;
                     }break;
-                        
+
                     case SDL_JOYHATMOTION:
                         switch(event.jhat.value){
                             case 1 : joyinput.up = 1;break;
                             case 4 : joyinput.down = 1;break;
                             default : joyinput.up = 0;joyinput.down = 0;break;
                     }break;
-                
+
                     case SDL_JOYAXISMOTION:
                         switch(event.jaxis.axis){
                             case 0 : if(joyinput.trig){
@@ -444,7 +446,12 @@ int joy_idx = 0;
                                         }
                                      else{
                                             joyinput.pitch = 0;
-                                            joyinput.tilt = abslim(0.1*(event.jaxis.value >> 7),25);
+                                         if(event.jaxis.value > 0){
+                                             joyinput.tilt = abslim(0.1*(event.jaxis.value >> 7),25);
+                                         }
+                                         else{
+                                             joyinput.tilt = abslim(0.1*(event.jaxis.value >> 6),70);
+                                         }
                                         }break;
                             case 2 : joyinput.yaw = abslim(0.1*(event.jaxis.value >> 5),100);break;
                             case 3 : joyinput.slide = -(abslim(0.1*(event.jaxis.value >> 5),100)-100) >> 1;break;
@@ -456,6 +463,7 @@ int joy_idx = 0;
 
                    default:break;
                 }
+                JoystickStateChanged();
               }
             usleep(10000);
         }
@@ -643,6 +651,15 @@ void batteryStateChanged (uint8_t percent)
         IHM_PrintBattery (ihm, percent);
     }
 }
+
+void JoystickStateChanged (void)
+{
+    if (ihm != NULL)
+    {
+        IHM_PrintJoyinfo(ihm);
+    }
+}
+
 
 eARCONTROLLER_ERROR decoderConfigCallback (ARCONTROLLER_Stream_Codec_t codec, void *customData)
 {
