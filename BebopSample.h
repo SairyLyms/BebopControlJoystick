@@ -42,7 +42,7 @@ void commandReceived (eARCONTROLLER_DICTIONARY_KEY commandKey, ARCONTROLLER_DICT
 
 // IHM updates from commands
 void batteryStateChanged (uint8_t percent);
-void JoystickStateChanged (void);
+void DroneStateChanged (void);
 
 
 // called when a streaming frame has been received

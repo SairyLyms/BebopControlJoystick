@@ -87,7 +87,8 @@
  *             implementation :
  *
  *****************************************/
-input_t joyinput;
+input_t joyinput = {0};
+state_t state = {0};
 
 static char fifo_dir[] = FIFO_DIR_PATTERN;
 static char fifo_name[128] = "";
@@ -109,25 +110,6 @@ int abslim(int in,int lim)
     if((sign * in) > lim){value = sign * lim;}
     else{value = in;}
     return value;
-}
-
-
-
-void InitJoystickValue(void)
-{
-    joyinput.roll = 0;
-    joyinput.pitch = 0;
-    joyinput.yaw = 0;
-    joyinput.slide = 0;
-    joyinput.viewdir = 0;
-    joyinput.shot = 0;
-    joyinput.trig = 0;
-    joyinput.landing = 0;
-    joyinput.takeoff = 0;
-    joyinput.up = 0;
-    joyinput.down = 0;
-    joyinput.pan = 0;
-    joyinput.tilt = 0;
 }
 
 static void signal_handler(int signal)
@@ -396,7 +378,6 @@ int joy_idx = 0;
       fprintf(stderr, "Unable to init SDL: %s\n", SDL_GetError());
       exit(1);
   }
-  InitJoystickValue();
 
   SDL_Joystick* joy = SDL_JoystickOpen(joy_idx);
   int num_axes    = SDL_JoystickNumAxes(joy);
@@ -413,58 +394,71 @@ int joy_idx = 0;
                 {
                   case SDL_JOYBUTTONDOWN:
                   case SDL_JOYBUTTONUP:
+                  joyinput.debug = event.jbutton.button;
                     switch(event.jbutton.button){
                       case 0 : joyinput.trig =  event.jbutton.state;break;
                       case 1 : joyinput.shot = event.jbutton.state;break;
                       case 2 : joyinput.landing = event.jbutton.state;break;
                       case 3 : joyinput.takeoff = event.jbutton.state;break;
-                      //case 6 : joyinput.up =  event.jbutton.state;break;
-                      //case 7 : joyinput.down =  event.jbutton.state;break;
+                      case 6 : joyinput.up =  event.jbutton.state;break;
+                      case 7 : joyinput.down =  event.jbutton.state;break;
+                      case 4 : if(!joyinput.viewup && event.jbutton.state){joyinput.tilt = abslim(joyinput.tilt + 10,100);}
+                                joyinput.viewup = event.jbutton.state;
+                                break;
+                      case 9 : if(!joyinput.viewdown && event.jbutton.state){joyinput.tilt = abslim(joyinput.tilt - 10,100);}
+                                joyinput.viewdown = event.jbutton.state;
+                                break;
                       default : break;
                     }break;
-
-                    case SDL_JOYHATMOTION:
-                        switch(event.jhat.value){
-                            case 1 : joyinput.up = 1;break;
-                            case 4 : joyinput.down = 1;break;
-                            default : joyinput.up = 0;joyinput.down = 0;break;
-                    }break;
-
                     case SDL_JOYAXISMOTION:
                         switch(event.jaxis.axis){
                             case 0 : if(joyinput.trig){
-                                            joyinput.roll = abslim(0.1*(event.jaxis.value >> 5),100);
-                                            joyinput.pan = 0;
+                                            joyinput.roll = abslim(0.1*(event.jaxis.value >> 6),100);
                                         }
-                                     else{
-                                            joyinput.roll = 0;
-                                            joyinput.pan = abslim(0.1*(event.jaxis.value >> 6),50);
-                                        }break;
+                                      break;
                             case 1 : if(joyinput.trig){
-                                            joyinput.pitch = -abslim(0.1*(event.jaxis.value >> 5),100);
-                                            joyinput.tilt = 0;
+                                            joyinput.pitch = -abslim(0.1*(event.jaxis.value >> 6),100);
                                         }
-                                     else{
-                                            joyinput.pitch = 0;
-                                         if(event.jaxis.value > 0){
-                                             joyinput.tilt = abslim(0.1*(event.jaxis.value >> 7),25);
-                                         }
-                                         else{
-                                             joyinput.tilt = abslim(0.1*(event.jaxis.value >> 6),70);
-                                         }
-                                        }break;
-                            case 2 : joyinput.yaw = abslim(0.1*(event.jaxis.value >> 5),100);break;
+                                      break;
+                            case 2 : joyinput.yaw = abslim(0.1*(event.jaxis.value >> 6),100);break;
                             case 3 : joyinput.slide = -(abslim(0.1*(event.jaxis.value >> 5),100)-100) >> 1;break;
                             default : break;
                     }break;
-                        case SDL_QUIT:
+                    case SDL_JOYHATMOTION:
+                            joyinput.viewdir = event.jhat.value;
+                    break;
+                    case SDL_QUIT:
                         printf("Recieved interrupt, exiting\n");
                     break;
-
                    default:break;
                 }
-                JoystickStateChanged();
+                if(!joyinput.trig){
+                  joyinput.roll = 0;
+                  joyinput.pitch = 0;
+                }
+                if(joyinput.viewdir){
+                  if(joyinput.viewdir & 0x1){joyinput.tilt = 0.5 * joyinput.slide;}
+                  if(joyinput.viewdir & 0x4){
+                    if(joyinput.viewdir != 0x4){joyinput.tilt = -0.5 * joyinput.slide;}
+                    else{joyinput.tilt = -1 * joyinput.slide;}
+                  }
+                  if(joyinput.viewdir & 0x2){joyinput.pan = 0.8 * joyinput.slide;}
+                  if(joyinput.viewdir & 0x8){joyinput.pan = -0.8 * joyinput.slide;}
+                }
+                else{
+                  joyinput.pan = 0;
+                }
+                if(joyinput.down){
+                  joyinput.gaz = -50;
+                }
+                else if(joyinput.up){
+                  joyinput.gaz = 80;
+                }
+                else{
+                  joyinput.gaz = 0;
+                }
               }
+            DroneStateChanged();
             usleep(10000);
         }
 #else
@@ -584,6 +578,47 @@ static void cmdBatteryStateChangedRcv(ARCONTROLLER_Device_t *deviceController, A
     batteryStateChanged(arg->value.U8);
 }
 
+static float cmdSpeedChangedRcv(ARCONTROLLER_Device_t *deviceController, ARCONTROLLER_DICTIONARY_ELEMENT_t *elementDictionary)
+{
+  ARCONTROLLER_DICTIONARY_ARG_t *arg = NULL;
+  ARCONTROLLER_DICTIONARY_ELEMENT_t *element = NULL;
+  float speedX = 0,speedY = 0,speed = 0;
+  HASH_FIND_STR (elementDictionary, ARCONTROLLER_DICTIONARY_SINGLE_KEY, element);
+  if (element != NULL)
+  {
+      HASH_FIND_STR (element->arguments, ARCONTROLLER_DICTIONARY_KEY_ARDRONE3_PILOTINGSTATE_SPEEDCHANGED_SPEEDX, arg);
+      if (arg != NULL)
+      {
+          speedX = arg->value.Float;
+      }
+      HASH_FIND_STR (element->arguments, ARCONTROLLER_DICTIONARY_KEY_ARDRONE3_PILOTINGSTATE_SPEEDCHANGED_SPEEDY, arg);
+      if (arg != NULL)
+      {
+          speedY = arg->value.Float;
+      }
+      speed = 3.6 * sqrt(pow(speedX,2) + pow(speedY,2));
+  }
+  return speed;
+}
+
+static float cmdAltitudeChangedRcv(ARCONTROLLER_Device_t *deviceController, ARCONTROLLER_DICTIONARY_ELEMENT_t *elementDictionary)
+{
+  ARCONTROLLER_DICTIONARY_ARG_t *arg = NULL;
+  ARCONTROLLER_DICTIONARY_ELEMENT_t *element = NULL;
+  double altitude = 0;
+  HASH_FIND_STR (elementDictionary, ARCONTROLLER_DICTIONARY_SINGLE_KEY, element);
+  if (element != NULL)
+  {
+      HASH_FIND_STR (element->arguments, ARCONTROLLER_DICTIONARY_KEY_ARDRONE3_PILOTINGSTATE_ALTITUDECHANGED_ALTITUDE, arg);
+      if (arg != NULL)
+      {
+          altitude = (float)arg->value.Double;
+      }
+  }
+  return altitude;
+}
+
+
 static void cmdSensorStateListChangedRcv(ARCONTROLLER_Device_t *deviceController, ARCONTROLLER_DICTIONARY_ELEMENT_t *elementDictionary)
 {
     ARCONTROLLER_DICTIONARY_ARG_t *arg = NULL;
@@ -637,6 +672,12 @@ void commandReceived (eARCONTROLLER_DICTIONARY_KEY commandKey, ARCONTROLLER_DICT
     case ARCONTROLLER_DICTIONARY_KEY_COMMON_COMMONSTATE_SENSORSSTATESLISTCHANGED:
         cmdSensorStateListChangedRcv(deviceController, elementDictionary);
         break;
+    case ARCONTROLLER_DICTIONARY_KEY_ARDRONE3_PILOTINGSTATE_SPEEDCHANGED:
+        state.speed = cmdSpeedChangedRcv(deviceController, elementDictionary);
+        break;
+    case ARCONTROLLER_DICTIONARY_KEY_ARDRONE3_PILOTINGSTATE_ALTITUDECHANGED:
+        state.altitude = cmdAltitudeChangedRcv(deviceController, elementDictionary);
+        break;
     default:
         break;
     }
@@ -644,19 +685,17 @@ void commandReceived (eARCONTROLLER_DICTIONARY_KEY commandKey, ARCONTROLLER_DICT
 
 void batteryStateChanged (uint8_t percent)
 {
-    // callback of changing of battery level
-
     if (ihm != NULL)
     {
-        IHM_PrintBattery (ihm, percent);
+        IHM_PrintBatteryState (ihm, percent);
     }
 }
 
-void JoystickStateChanged (void)
+void DroneStateChanged (void)
 {
     if (ihm != NULL)
     {
-        IHM_PrintJoyinfo(ihm);
+        IHM_PrintStateinfo(ihm);
     }
 }
 
@@ -746,63 +785,6 @@ void onInputEvent (eIHM_INPUT_EVENT event, void *customData)
             error = deviceController->aRDrone3->sendPilotingTakeOff(deviceController->aRDrone3);
         }
         break;
-    case IHM_INPUT_EVENT_UP:
-        if(deviceController != NULL)
-        {
-            // set the flag and speed value of the piloting command
-            error = deviceController->aRDrone3->setPilotingPCMDGaz(deviceController->aRDrone3, 100);
-        }
-        break;
-    case IHM_INPUT_EVENT_DOWN:
-        if(deviceController != NULL)
-        {
-            error = deviceController->aRDrone3->setPilotingPCMDGaz(deviceController->aRDrone3, -50);
-        }
-        break;
-    case IHM_INPUT_EVENT_RIGHT:
-        if(deviceController != NULL)
-        {
-            error = deviceController->aRDrone3->setPilotingPCMDYaw(deviceController->aRDrone3, joyinput.yaw);
-        }
-        break;
-    case IHM_INPUT_EVENT_LEFT:
-        if(deviceController != NULL)
-        {
-            error = deviceController->aRDrone3->setPilotingPCMDYaw(deviceController->aRDrone3, joyinput.yaw);
-        }
-        break;
-    case IHM_INPUT_EVENT_FORWARD:
-        if(deviceController != NULL)
-        {
-            error = deviceController->aRDrone3->sendCameraOrientation(deviceController->aRDrone3, 0, 0);
-            error = deviceController->aRDrone3->setPilotingPCMDPitch(deviceController->aRDrone3, joyinput.pitch);
-            error = deviceController->aRDrone3->setPilotingPCMDFlag(deviceController->aRDrone3, joyinput.trig);
-        }
-        break;
-    case IHM_INPUT_EVENT_BACK:
-        if(deviceController != NULL)
-        {
-            error = deviceController->aRDrone3->sendCameraOrientation(deviceController->aRDrone3, 0, 0);
-            error = deviceController->aRDrone3->setPilotingPCMDPitch(deviceController->aRDrone3, joyinput.pitch);
-            error = deviceController->aRDrone3->setPilotingPCMDFlag(deviceController->aRDrone3, joyinput.trig);
-        }
-        break;
-    case IHM_INPUT_EVENT_ROLL_LEFT:
-        if(deviceController != NULL)
-        {
-            error = deviceController->aRDrone3->sendCameraOrientation(deviceController->aRDrone3, 0, 0);
-            error = deviceController->aRDrone3->setPilotingPCMDRoll(deviceController->aRDrone3, joyinput.roll);
-            error = deviceController->aRDrone3->setPilotingPCMDFlag(deviceController->aRDrone3, joyinput.trig);
-        }
-        break;
-    case IHM_INPUT_EVENT_ROLL_RIGHT:
-        if(deviceController != NULL)
-        {
-            error = deviceController->aRDrone3->sendCameraOrientation(deviceController->aRDrone3, 0, 0);
-            error = deviceController->aRDrone3->setPilotingPCMDRoll(deviceController->aRDrone3, joyinput.roll);
-            error = deviceController->aRDrone3->setPilotingPCMDFlag(deviceController->aRDrone3, joyinput.trig);
-        }
-        break;
     case IHM_INPUT_EVENT_CAMERA_SHOT:
         if(deviceController != NULL)
         {
@@ -813,7 +795,13 @@ void onInputEvent (eIHM_INPUT_EVENT event, void *customData)
     case IHM_INPUT_EVENT_CAMERA_DIR:
         if(deviceController != NULL)
         {
-            error = deviceController->aRDrone3->sendCameraOrientation(deviceController->aRDrone3, joyinput.tilt, joyinput.pan);
+            error = deviceController->aRDrone3->sendCameraOrientation(deviceController->aRDrone3, (int8_t)joyinput.tilt, (int8_t)joyinput.pan);
+        }
+        break;
+    case IHM_INPUT_EVENT_MOVE:
+        if(deviceController != NULL)
+        {
+            error = deviceController->aRDrone3->setPilotingPCMD(deviceController->aRDrone3, joyinput.trig, joyinput.roll, joyinput.pitch, joyinput.yaw, joyinput.gaz, 0);
         }
         break;
     case IHM_INPUT_EVENT_NONE:

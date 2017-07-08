@@ -78,6 +78,7 @@
  ****************************************/
 void *IHM_InputProcessing(void *data);
 extern input_t joyinput;
+extern state_t state;
 
 /*****************************************
  *
@@ -197,104 +198,47 @@ extern input_t joyinput;
                       ihm->onInputEventCallback (IHM_INPUT_EVENT_EXIT, ihm->customData);
                   }
               }
-              else if(joyinput.up)
-              {
-                  if(ihm->onInputEventCallback != NULL)
-                  {
-                      ihm->onInputEventCallback (IHM_INPUT_EVENT_UP, ihm->customData);
-
-                  }
-              }
-              else if(joyinput.down)
-              {
-                  if(ihm->onInputEventCallback != NULL)
-                  {
-                      ihm->onInputEventCallback (IHM_INPUT_EVENT_DOWN, ihm->customData);
-                  }
-              }
-              else if(joyinput.yaw > 0)
-              {
-                  if(ihm->onInputEventCallback != NULL)
-                  {
-                      ihm->onInputEventCallback (IHM_INPUT_EVENT_LEFT, ihm->customData);
-                  }
-              }
-              else if(joyinput.yaw < 0)
-              {
-                  if(ihm->onInputEventCallback != NULL)
-                  {
-                      ihm->onInputEventCallback (IHM_INPUT_EVENT_RIGHT, ihm->customData);
-                  }
-              }
-              else if(key == 'e')
+              if(key == 'e')
               {
                   if(ihm->onInputEventCallback != NULL)
                   {
                       ihm->onInputEventCallback (IHM_INPUT_EVENT_EMERGENCY, ihm->customData);
                   }
               }
-              else if(joyinput.takeoff)
+              if(joyinput.takeoff)
               {
                   if(ihm->onInputEventCallback != NULL)
                   {
                       ihm->onInputEventCallback (IHM_INPUT_EVENT_TAKEOFF, ihm->customData);
                   }
               }
-              else if(joyinput.landing)
+              if(joyinput.landing)
               {
                   if(ihm->onInputEventCallback != NULL)
                   {
                       ihm->onInputEventCallback (IHM_INPUT_EVENT_LAND, ihm->customData);
                   }
               }
-              else if(joyinput.pitch > 0)
-              {
-                  if(ihm->onInputEventCallback != NULL)
-                  {
-                      ihm->onInputEventCallback (IHM_INPUT_EVENT_FORWARD, ihm->customData);
-                  }
-              }
-              else if(joyinput.pitch < 0)
-              {
-                  if(ihm->onInputEventCallback != NULL)
-                  {
-                      ihm->onInputEventCallback (IHM_INPUT_EVENT_BACK, ihm->customData);
-                  }
-              }
-              else if(joyinput.roll < 0)
-              {
-                  if(ihm->onInputEventCallback != NULL)
-                  {
-                      ihm->onInputEventCallback (IHM_INPUT_EVENT_ROLL_LEFT, ihm->customData);
-                  }
-              }
-              else if(joyinput.roll > 0)
-              {
-                  if(ihm->onInputEventCallback != NULL)
-                  {
-                      ihm->onInputEventCallback (IHM_INPUT_EVENT_ROLL_RIGHT, ihm->customData);
-                  }
-              }
-              else if(joyinput.shot)
+              if(joyinput.shot)
               {
                   if(ihm->onInputEventCallback != NULL)
                   {
                       ihm->onInputEventCallback (IHM_INPUT_EVENT_CAMERA_SHOT, ihm->customData);
                   }
               }
-              else if(joyinput.pan || joyinput.tilt)
+              if((joyinput.trig && (joyinput.pitch || joyinput.roll)) || joyinput.yaw || joyinput.gaz)
               {
                   if(ihm->onInputEventCallback != NULL)
                   {
-                      ihm->onInputEventCallback (IHM_INPUT_EVENT_CAMERA_DIR, ihm->customData);
+                      ihm->onInputEventCallback (IHM_INPUT_EVENT_MOVE, ihm->customData);
                   }
               }
-              else
-              {
-                  if(ihm->onInputEventCallback != NULL)
-                  {
+              else{
                       ihm->onInputEventCallback (IHM_INPUT_EVENT_NONE, ihm->customData);
-                  }
+              }
+              if(ihm->onInputEventCallback != NULL)
+              {
+                  ihm->onInputEventCallback (IHM_INPUT_EVENT_CAMERA_DIR, ihm->customData);
               }
               usleep(10000);
           }
@@ -324,7 +268,7 @@ extern input_t joyinput;
       }
   }
 
-  void IHM_PrintBattery(IHM_t *ihm, uint8_t percent)
+  void IHM_PrintBatteryState(IHM_t *ihm, uint8_t percent)
   {
       if (ihm != NULL)
       {
@@ -336,13 +280,16 @@ extern input_t joyinput;
   }
 
 
-  void IHM_PrintJoyinfo(IHM_t *ihm)
+  void IHM_PrintStateinfo(IHM_t *ihm)
     {
         if (ihm != NULL)
         {
             move(JOYVALUE_Y, 0);     // move to begining of line
             clrtoeol();             // clear line
-            mvprintw(JOYVALUE_Y, JOYVALUE_X, "Pitch: %d,Roll: %d,Yaw: %d,UP: %d,DOWN: %d", joyinput.pitch,joyinput.roll,joyinput.yaw,joyinput.up,joyinput.down);
+            mvprintw(JOYVALUE_Y, JOYVALUE_X, "Pitch: %d,Roll: %d,Yaw: %d,UP: %d,DOWN: %d, View:(x: %d,y: %d), Debug:%x", joyinput.pitch,joyinput.roll,joyinput.yaw,joyinput.up,joyinput.down,joyinput.pan,joyinput.tilt,joyinput.debug);
+            move(JOYVALUE_Y+2, 0);     // move to begining of line
+            clrtoeol();             // clear line
+            mvprintw(JOYVALUE_Y+2, JOYVALUE_X, "Speed: %4.2f km/h,Alt: %4.2f",state.speed,state.altitude);
             refresh();
         }
     }
