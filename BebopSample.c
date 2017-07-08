@@ -402,10 +402,10 @@ int joy_idx = 0;
                       case 3 : joyinput.takeoff = event.jbutton.state;break;
                       case 6 : joyinput.up =  event.jbutton.state;break;
                       case 7 : joyinput.down =  event.jbutton.state;break;
-                      case 4 : if(!joyinput.viewup && event.jbutton.state){joyinput.tilt = abslim(joyinput.tilt + 10,100);}
+                      case 4 : if(!joyinput.viewup && event.jbutton.state){joyinput.tilt = abslim(joyinput.tilt + 10,30);}
                                 joyinput.viewup = event.jbutton.state;
                                 break;
-                      case 9 : if(!joyinput.viewdown && event.jbutton.state){joyinput.tilt = abslim(joyinput.tilt - 10,100);}
+                      case 9 : if(!joyinput.viewdown && event.jbutton.state){joyinput.tilt = abslim(joyinput.tilt - 10,90);}
                                 joyinput.viewdown = event.jbutton.state;
                                 break;
                       default : break;
@@ -437,9 +437,9 @@ int joy_idx = 0;
                   joyinput.pitch = 0;
                 }
                 if(joyinput.viewdir){
-                  if(joyinput.viewdir & 0x1){joyinput.tilt = 0.5 * joyinput.slide;}
+                  if(joyinput.viewdir & 0x1){joyinput.tilt = abslim(0.3 * joyinput.slide,30);}
                   if(joyinput.viewdir & 0x4){
-                    if(joyinput.viewdir != 0x4){joyinput.tilt = -0.5 * joyinput.slide;}
+                    if(joyinput.viewdir != 0x4){joyinput.tilt = abslim(-0.5 * joyinput.slide,90);}
                     else{joyinput.tilt = -1 * joyinput.slide;}
                   }
                   if(joyinput.viewdir & 0x2){joyinput.pan = 0.8 * joyinput.slide;}
