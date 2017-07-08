@@ -52,6 +52,9 @@
 #include <libARController/ARController.h>
 #include <libARDiscovery/ARDiscovery.h>
 
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libswscale/swscale.h>
 #include "BebopSample.h"
 #include "ihm.h"
 #include <SDL2/SDL.h>
@@ -119,7 +122,7 @@ static void signal_handler(int signal)
 
 int main(int argc, char* argv[])
 {
-    // local declarations
+
     int failed = 0;
     ARDISCOVERY_Device_t *device = NULL;
     ARCONTROLLER_Device_t *deviceController = NULL;
@@ -127,7 +130,7 @@ int main(int argc, char* argv[])
     eARCONTROLLER_DEVICE_STATE deviceState = ARCONTROLLER_DEVICE_STATE_MAX;
     pid_t child = 0;
     pthread_t tid;
-
+    
     /* Set signal handlers */
     struct sigaction sig_action = {
         .sa_handler = signal_handler,
@@ -190,7 +193,7 @@ int main(int argc, char* argv[])
             if ((child = fork()) == 0)
             {
                 execlp("xterm", "xterm", "-e", "mplayer", "-demuxer", "h264es", fifo_name,"-benchmark", "-really-quiet", NULL);
-                //execlp("xterm", "xterm", "-e", "mplayer" ,"-cpuflags","sse4.2","-framedrop","-maxrate","512KB","-minrate","256KB","-bufsize","1024KB","-b:v","300KB", fifo_name, NULL);
+                //execlp("xterm", "xterm", "-e", "ffplay" ,"-cpuflags","sse4.2","-framedrop","-maxrate","512KB","-minrate","256KB","-bufsize","1024KB","-b:v","300KB","-vcodec","libx264", fifo_name, NULL);
                 ARSAL_PRINT(ARSAL_PRINT_ERROR, TAG, "Missing mplayer, you will not see the video. Please install mplayer and xterm.");
                 return -1;
             }
