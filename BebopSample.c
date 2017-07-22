@@ -52,9 +52,6 @@
 #include <libARController/ARController.h>
 #include <libARDiscovery/ARDiscovery.h>
 
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-#include <libswscale/swscale.h>
 #include "BebopSample.h"
 #include "ihm.h"
 #include <SDL2/SDL.h>
@@ -115,6 +112,20 @@ int abslim(int in,int lim)
     return value;
 }
 
+float DzGain(int in,int lim)
+{
+    int sign;
+    float gain,fin,flim;
+    if(!lim){lim = 1;}
+    sign = (in > 0) - (in < 0);
+    fin = (float)(sign * in);
+    flim = (float)lim;
+    if((sign * in) < lim){gain = 0;}
+    else if ((sign * in) < (2 * lim)){gain = (1/flim) * (fin-flim);}
+    else{gain = 1;}
+    return gain;
+}
+
 static void signal_handler(int signal)
 {
     gIHMRun = 0;
@@ -130,7 +141,7 @@ int main(int argc, char* argv[])
     eARCONTROLLER_DEVICE_STATE deviceState = ARCONTROLLER_DEVICE_STATE_MAX;
     pid_t child = 0;
     pthread_t tid;
-    
+
     /* Set signal handlers */
     struct sigaction sig_action = {
         .sa_handler = signal_handler,
@@ -416,11 +427,15 @@ int joy_idx = 0;
                     case SDL_JOYAXISMOTION:
                         switch(event.jaxis.axis){
                             case 0 : if(joyinput.trig){
-                                            joyinput.roll = abslim(0.1*(event.jaxis.value >> 6),100);
+                                            int buf;
+                                            buf = (int)(DzGain(event.jaxis.value,0x2000)*(float)event.jaxis.value);
+                                            joyinput.roll = abslim(0.1*(buf >> 6),100);
                                         }
                                       break;
                             case 1 : if(joyinput.trig){
-                                            joyinput.pitch = -abslim(0.1*(event.jaxis.value >> 6),100);
+                                            int buf;
+                                            buf = (int)(DzGain(event.jaxis.value,0x2000)*(float)event.jaxis.value);
+                                            joyinput.pitch = -abslim(0.1*(buf >> 6),100);
                                         }
                                       break;
                             case 2 : joyinput.yaw = abslim(0.1*(event.jaxis.value >> 6),100);break;

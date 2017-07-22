@@ -33,6 +33,8 @@
 #define _BEBOP_SAMPLE_H_
 
 #include "ihm.h"
+float DzGain(int in,int lim);
+int abslim(int in,int lim);
 
 // called when the state of the device controller has changed
 void stateChanged (eARCONTROLLER_DEVICE_STATE newState, eARCONTROLLER_ERROR error, void *customData);
