@@ -363,6 +363,10 @@ int main(int argc, char* argv[])
     // send the command that tells to the Bebop to begin its streaming
     if (!failed)
     {
+        error = deviceController->common->sendWifiSettingsOutdoorSetting(deviceController->common, 0);
+        error = deviceController->aRDrone3->sendPilotingSettingsBankedTurn(deviceController->aRDrone3, 1); //bankedturn
+        error = deviceController->aRDrone3->sendAntiflickeringElectricFrequency(deviceController->aRDrone3, 0);
+        deviceController->aRDrone3->sendAntiflickeringSetMode(deviceController->aRDrone3, 1);
         ARSAL_PRINT(ARSAL_PRINT_INFO, TAG, "- send StreamingVideoEnable ... ");
         error = deviceController->aRDrone3->sendPictureSettingsVideoFramerate(deviceController->aRDrone3, 2);
         error = deviceController->aRDrone3->sendPictureSettingsVideoResolutions(deviceController->aRDrone3, 0);
@@ -416,11 +420,17 @@ int joy_idx = 0;
                       case 3 : joyinput.takeoff = event.jbutton.state;break;
                       case 6 : joyinput.up =  event.jbutton.state;break;
                       case 7 : joyinput.down =  event.jbutton.state;break;
-                      case 4 : if(!joyinput.viewup && event.jbutton.state){joyinput.tilt = abslim(joyinput.tilt + 10,100);}
+                      case 5 : if(!joyinput.viewup && event.jbutton.state){joyinput.tilt = abslim(joyinput.tilt + 30,30);}
                                 joyinput.viewup = event.jbutton.state;
                                 break;
-                      case 9 : if(!joyinput.viewdown && event.jbutton.state){joyinput.tilt = abslim(joyinput.tilt - 10,100);}
+                      case 8 : if(!joyinput.viewdown && event.jbutton.state){joyinput.tilt = abslim(joyinput.tilt - 30,90);}
                                 joyinput.viewdown = event.jbutton.state;
+                                break;
+                      case 4 : if(!joyinput.viewleft && event.jbutton.state){joyinput.pan = abslim(joyinput.pan - 40,40);}
+                                joyinput.viewleft = event.jbutton.state;
+                                break;
+                      case 9 : if(!joyinput.viewright && event.jbutton.state){joyinput.pan = abslim(joyinput.pan + 40,40);}
+                                joyinput.viewright = event.jbutton.state;
                                 break;
                       default : break;
                     }break;
@@ -428,17 +438,22 @@ int joy_idx = 0;
                         switch(event.jaxis.axis){
                             case 0 : if(joyinput.trig){
                                             int buf;
-                                            buf = (int)(DzGain(event.jaxis.value,0x2000)*(float)event.jaxis.value);
+                                            buf = (int)(DzGain(event.jaxis.value,0x2200)*(float)event.jaxis.value);
                                             joyinput.roll = abslim(0.1*(buf >> 6),100);
                                         }
                                       break;
                             case 1 : if(joyinput.trig){
                                             int buf;
-                                            buf = (int)(DzGain(event.jaxis.value,0x2000)*(float)event.jaxis.value);
+                                            buf = (int)(DzGain(event.jaxis.value,0x2200)*(float)event.jaxis.value);
                                             joyinput.pitch = -abslim(0.1*(buf >> 6),100);
                                         }
                                       break;
-                            case 2 : joyinput.yaw = abslim(0.1*(event.jaxis.value >> 6),100);break;
+                            case 2 : if(1){
+                                            int buf;
+                                            buf = (int)(DzGain(event.jaxis.value,0x2000)*(float)event.jaxis.value);
+                                            joyinput.yaw = abslim(0.1*(buf >> 6),100);
+                                        }
+                                     break;
                             case 3 : joyinput.slide = -(abslim(0.1*(event.jaxis.value >> 5),100)-100) >> 1;break;
                             default : break;
                     }break;
@@ -462,9 +477,6 @@ int joy_idx = 0;
                   }
                   if(joyinput.viewdir & 0x2){joyinput.pan = 0.8 * joyinput.slide;}
                   if(joyinput.viewdir & 0x8){joyinput.pan = -0.8 * joyinput.slide;}
-                }
-                else{
-                  joyinput.pan = 0;
                 }
                 if(joyinput.down){
                   joyinput.gaz = -50;

@@ -67,7 +67,7 @@ typedef struct
 }IHM_t;
 
 typedef struct {
-    int pitch,roll,yaw,slide,takeoff,landing,up,down,gaz,trig,shot,viewdir,pan,tilt,viewdown,viewup,debug;
+    int pitch,roll,yaw,slide,takeoff,landing,up,down,gaz,trig,shot,viewdir,pan,tilt,viewdown,viewup,viewleft,viewright,debug;
 }input_t;
 
 typedef struct {
